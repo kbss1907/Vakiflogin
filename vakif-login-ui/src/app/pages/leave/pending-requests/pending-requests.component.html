@@ -1,0 +1,137 @@
+<div class="dashboard-container">
+    <!-- Back Button Row -->
+    <div class="mb-6">
+        <a routerLink="/" class="btn-back">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18">
+                </path>
+            </svg>
+            Ana Sayfaya Dön
+        </a>
+    </div>
+
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="header-titles">
+            <h1>Bekleyen İzin Onayları</h1>
+            <p>Personellerin onay bekleyen tüm izin taleplerini buradan yönetebilirsiniz.</p>
+        </div>
+
+        <div class="header-stats" *ngIf="!isLoading && pendingRequests.length > 0">
+            <div class="pulse-indicator"></div>
+            <span class="pulse-text">{{ pendingRequests.length }} adet bekleyen talep var</span>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading-state" *ngIf="isLoading">
+        <div class="spinner"></div>
+        <p>Veriler yükleniyor, lütfen bekleyin...</p>
+    </div>
+
+    <!-- Table Section -->
+    <div class="card table-card" *ngIf="!isLoading">
+        <div class="table-responsive">
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th>Çalışan Adı</th>
+                        <th>İzin Türü</th>
+                        <th>BaşlangıçTarihi</th>
+                        <th>Bitiş Tarihi</th>
+                        <th>Mazeret</th>
+                        <th>Talep Tarihi</th>
+                        <th>Aksiyon</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngIf="pendingRequests.length === 0">
+                        <td colspan="7" class="empty-state">
+                            <div class="empty-icon">☕</div>
+                            <p
+                                *ngIf="currentUserProfile && (currentUserProfile.positionName.toLowerCase().includes('admin') || 
+                                                            currentUserProfile.departmentName.toLowerCase().includes('ik') || 
+                                                            currentUserProfile.positionName.toLowerCase().includes('müdür') || 
+                                                            currentUserProfile.positionName.toLowerCase().includes('lead'))">
+                                Harika! Şu an onayınızı bekleyen hiçbir izin talebi yok.
+                            </p>
+                            <p
+                                *ngIf="!(currentUserProfile && (currentUserProfile.positionName.toLowerCase().includes('admin') || 
+                                                              currentUserProfile.departmentName.toLowerCase().includes('ik') || 
+                                                              currentUserProfile.positionName.toLowerCase().includes('müdür') || 
+                                                              currentUserProfile.positionName.toLowerCase().includes('lead')))">
+                                Bu sayfayı görüntüleme veya izin onaylama yetkiniz bulunmuyor.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <tr *ngFor="let req of pendingRequests">
+                        <td class="user-cell">
+                            <div class="user-avatar">{{ req.firstName?.[0] || '?' }}{{ req.lastName?.[0] || '' }}</div>
+                            <span class="font-medium">{{ req.firstName }} {{ req.lastName }}</span>
+                        </td>
+                        <td><span class="type-badge">{{ req.leaveTypeName }}</span></td>
+                        <td>{{ req.startDateTime | date:'dd.MM.yyyy HH:mm' }}</td>
+                        <td>{{ req.endDateTime | date:'dd.MM.yyyy HH:mm' }}</td>
+                        <td class="truncate" title="{{ req.reason }}">{{ req.reason }}</td>
+                        <td class="text-muted">{{ req.createdAt | date:'dd.MM.yyyy' }}</td>
+                        <td>
+                            <button class="btn-action" (click)="openApprovalModal(req)">İncele</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Approval/Rejection Modal -->
+<div class="modal-overlay" *ngIf="showApprovalModal && selectedRequest">
+    <div class="modal-content animate-pop">
+        <div class="modal-header">
+            <h2>İzin Talebi Onayı</h2>
+            <button class="btn-close" (click)="closeModal()">&times;</button>
+        </div>
+
+        <div class="modal-body">
+            <div class="request-summary">
+                <div class="summary-item">
+                    <span class="label">Çalışan:</span>
+                    <span class="value">{{ selectedRequest.firstName }} {{ selectedRequest.lastName }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">İzin Türü:</span>
+                    <span class="value">{{ selectedRequest.leaveTypeName }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">Tarih Aralığı:</span>
+                    <span class="value">
+                        {{ selectedRequest.startDateTime | date:'dd.MM.yyyy HH:mm' }} -
+                        {{ selectedRequest.endDateTime | date:'dd.MM.yyyy HH:mm' }}
+                    </span>
+                </div>
+                <div class="summary-item full-width">
+                    <span class="label">Mazeret:</span>
+                    <p class="reason-text">{{ selectedRequest.reason }}</p>
+                </div>
+            </div>
+
+            <div class="rejection-box">
+                <label for="rejectionReason">Red Nedeni (Eğer reddedilecekse):</label>
+                <textarea id="rejectionReason" [(ngModel)]="rejectionReason" class="form-control" rows="2"
+                    placeholder="İsteğe bağlı veya reddederken zorunlu...">
+        </textarea>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn-reject" (click)="rejectRequest()" [disabled]="isSubmitting">
+                    <span *ngIf="!isSubmitting">Reddet</span>
+                </button>
+                <button class="btn-approve" (click)="approveRequest()" [disabled]="isSubmitting">
+                    <span *ngIf="!isSubmitting">Onayla</span>
+                    <span *ngIf="isSubmitting" class="loader"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
